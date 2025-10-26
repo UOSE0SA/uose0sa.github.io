@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aili25SU - Fanaili Studio新专辑</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+
+    <!-- 配置Tailwind自定义主题 -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#ffffff',
+                        secondary: '#aaaaaa',
+                        accent: '#4167ff',
+                        dark: '#0a0a0a',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                },
+            }
+        }
+    </script>
+
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .text-balance {
+                text-wrap: balance;
+            }
+            .album-hover {
+                @apply transition-all duration-500 hover:scale-[1.02] hover:shadow-[0_0_30px_rgba(255,255,255,0.15)];
+            }
+            .track-hover {
+                @apply transition-all duration-300 hover:bg-white/5 hover:pl-2 cursor-pointer;
+            }
+        }
+    </style>
+
+    <style>
+        /* 全局样式 */
+        body {
+            background-color: #000000;
+            color: #ffffff;
+            overflow-x: hidden;
+        }
+
+        /* 进度条动画 */
+        @keyframes progress {
+            0% { width: 0%; }
+            100% { width: 100%; }
+        }
+
+        .animate-progress {
+            animation: progress 4200s linear forwards; /* 总时长约70分钟 */
+        }
+
+        /* 平滑滚动 */
+        html {
+            scroll-behavior: smooth;
+        }
+
+        /* 自定义滚动条 */
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #0a0a0a;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #333;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+        /* 侧边边栏样式 */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            right: -350px;
+            width: 350px;
+            height: 100vh;
+            background-color: #0a0a0a;
+            border-left: 1px solid rgba(255,255,255,0.1);
+            z-index: 1000;
+            transition: right 0.3s ease;
+            overflow-y: auto;
+        }
+
+        .sidebar.open {
+            right: 0;
+        }
+
+        .sidebar-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0,0,0,0.7);
+            z-index: 999;
+            display: none;
+        }
+
+        .sidebar-overlay.active {
+            display: block;
+        }
+
+        /* 音量控制样式 */
+        .volume-control {
+            width: 100px;
+            appearance: none;
+            height: 2px;
+            background: rgba(255,255,255,0.2);
+            outline: none;
+        }
+
+        .volume-control::-webkit-slider-thumb {
+            appearance: none;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #4167ff;
+            cursor: pointer;
+        }
+
+        /* 视频进度条样式 */
+        .video-progress {
+            appearance: none;
+            width: 100%;
+            height: 4px;
+            background: rgba(255,255,255,0.2);
+            outline: none;
+            border-radius: 2px;
+        }
+
+        .video-progress::-webkit-slider-thumb {
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #4167ff;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body class="font-sans antialiased">
+<!-- 侧边栏遮罩 -->
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+<!-- 侧边栏曲目列表 -->
+<div class="sidebar p-6" id="sidebar">
+    <div class="flex justify-between items-center mb-8">
+        <h3 class="text-xl font-bold">曲目列表</h3>
+        <button id="closeSidebar" class="text-secondary hover:text-primary">
+            <i class="fa fa-times text-xl"></i>
+        </button>
+    </div>
+    <div class="space-y-3" id="sidebarTracksContainer">
+        <!-- 曲目将通过JS动态生成 -->
+    </div>
+</div>
+
+<!-- 顶部导航 -->
+<header class="fixed top-0 left-0 right-0 z-50 bg-dark/80 backdrop-blur-md border-b border-white/10">
+    <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+        <div class="text-lg font-bold tracking-wider">FANAILI STUDIO</div>
+        <nav class="hidden md:flex space-x-8">
+            <a href="#about" class="text-secondary hover:text-primary transition-colors">专辑介绍</a>
+            <a href="#release" class="text-secondary hover:text-primary transition-colors">发行信息</a>
+            <a href="#listen" class="text-secondary hover:text-primary transition-colors">立即收听</a>
+            <button id="openSidebarBtn" class="text-secondary hover:text-primary transition-colors flex items-center">
+                <i class="fa fa-list mr-2"></i> 曲目列表
+            </button>
+        </nav>
+        <div class="flex items-center md:hidden">
+            <button id="mobileSidebarBtn" class="text-primary mr-4">
+                <i class="fa fa-list text-xl"></i>
+            </button>
+            <button class="text-primary">
+                <i class="fa fa-bars text-xl"></i>
+            </button>
+        </div>
+    </div>
+</header>
+
+<!-- 专辑封面弹窗 -->
+<div id="albumCoverModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/90 hidden">
+    <div class="relative max-w-3xl w-full p-4">
+        <button id="closeAlbumCover" class="absolute -top-12 right-0 text-white hover:text-accent text-2xl">
+            <i class="fa fa-times"></i>
+        </button>
+        <img src="assets/album_cover.JPG" alt="Aili25SU专辑封面大图" class="w-full h-auto rounded-lg">
+    </div>
+</div>
+
+<!-- 专辑介绍 -->
+<section id="about" class="py-20 px-4 bg-dark">
+    <div class="container mx-auto max-w-4xl">
+        <h2 class="text-[clamp(1.5rem,3vw,2.5rem)] font-bold mb-10 border-b border-white/10 pb-4">专辑介绍</h2>
+        <div class="grid md:grid-cols-2 gap-12 items-center">
+            <div>
+                <p class="text-secondary mb-6 leading-relaxed">
+                    《Aili25SU》是Fanaili Studio推出的全新专辑，收录14首精心打造的作品。这张专辑融合了多元音乐风格，从电子到民谣，从流行到实验音乐，展现了工作室在音乐创作上的无限可能。
+                </p>
+                <p class="text-secondary mb-6 leading-relaxed">
+                    专辑名称《Aili25SU》蕴含着工作室成立25周年的纪念意义，同时也代表着对未来音乐探索的无限期待。每首作品都经过精心打磨，无论是旋律编排还是歌词创作，都体现了Fanaili Studio对音乐品质的极致追求。
+                </p>
+                <p class="text-secondary leading-relaxed">
+                    专辑中多首作品邀请了知名音乐人合作，带来了不同音乐风格的碰撞与融合，为听众呈现一场丰富的听觉盛宴。
+                </p>
+            </div>
+            <div class="relative h-64 md:h-80 overflow-hidden rounded-sm">
+                <img src="assets/studio.png" alt="Fanaili Studio" class="w-full h-full object-cover">
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- 发行信息 -->
+<section id="release" class="py-20 px-4">
+    <div class="container mx-auto max-w-4xl">
+        <h2 class="text-[clamp(1.5rem,3vw,2.5rem)] font-bold mb-10 border-b border-white/10 pb-4">发行信息</h2>
+        <div class="grid md:grid-cols-3 gap-8">
+            <div class="p-6 border border-white/10 hover:border-white/30 transition-colors">
+                <div class="text-accent text-4xl mb-4"><i class="fa fa-calendar"></i></div>
+                <h3 class="text-xl font-semibold mb-2">发行日期</h3>
+                <p class="text-secondary">2025年10月25日</p>
+            </div>
+            <div class="p-6 border border-white/10 hover:border-white/30 transition-colors">
+                <div class="text-accent text-4xl mb-4"><i class="fa fa-music"></i></div>
+                <h3 class="text-xl font-semibold mb-2">收录曲目</h3>
+                <p class="text-secondary">14首</p>
+            </div>
+            <div class="p-6 border border-white/10 hover:border-white/30 transition-colors">
+                <div class="text-accent text-4xl mb-4"><i class="fa fa-headphones"></i></div>
+                <h3 class="text-xl font-semibold mb-2">播放平台</h3>
+                <p class="text-secondary">全平台同步上线</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- 立即收听 -->
+<section id="listen" class="py-20 px-4">
+    <div class="container mx-auto max-w-4xl">
+        <h2 class="text-[clamp(1.5rem,3vw,2.5rem)] font-bold mb-10 border-b border-white/10 pb-4">立即收听</h2>
+
+        <div class="aspect-video w-full bg-black rounded-sm overflow-hidden mb-8 relative">
+            <video id="album-video" class="w-full h-full object-cover" poster="assets/album_cover.JPG">
+                <source src="assets/album_video.mp4" type="video/mp4">
+                您的浏览器不支持视频播放
+            </video>
+            <div id="video-overlay" class="absolute inset-0 flex items-center justify-center bg-black/50 cursor-pointer">
+                <div class="w-20 h-20 rounded-full bg-accent flex items-center justify-center">
+                    <i class="fa fa-play text-3xl ml-2"></i>
+                </div>
+            </div>
+
+            <!-- 视频控制栏 -->
+            <div class="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black to-transparent">
+                <div class="mb-3">
+                    <input type="range" id="videoProgressBar" class="video-progress" min="0" max="100" value="0">
+                </div>
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center space-x-4">
+                        <button id="videoPlayPause" class="text-white hover:text-accent">
+                            <i class="fa fa-play text-xl"></i>
+                        </button>
+                        <div class="flex items-center space-x-2">
+                            <i class="fa fa-volume-up text-white"></i>
+                            <input type="range" id="volumeControl" class="volume-control" min="0" max="1" step="0.05" value="1">
+                        </div>
+                        <span id="videoTimeDisplay" class="text-sm text-white">00:00 / 00:00</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center">
+            <p class="text-secondary mb-8">点击上方视频开始播放，或选择顶部中的「<i class="fa fa-list mr-2"></i> 曲目列表」歌曲直接跳转</p>
+        </div>
+    </div>
+</section>
+
+<!-- 页脚 -->
+<footer class="py-12 px-4 bg-dark border-t border-white/10">
+    <div class="container mx-auto max-w-4xl text-center">
+        <div class="text-2xl font-bold mb-6">FANAILI STUDIO</div>
+        <p class="text-secondary mb-8">© 2025 Fanaili Studio. 保留所有权利。</p>
+    </div>
+</footer>
+
+<script>
+    // 曲目数据
+    const tracks = [
+        { time: "00:00", title: "Fanaili", seconds: 0 },
+        { time: "02:34", title: "FANTASY", seconds: 154 },
+        { time: "06:31", title: "莫愁乡(feat. Fanaili)", seconds: 391 },
+        { time: "08:50", title: "雑踏、僕らの街(feat. Fanaili)", seconds: 530 },
+        { time: "11:54", title: "Fantasia", seconds: 714 },
+        { time: "15:04", title: "FanPeng", seconds: 904 },
+        { time: "18:01", title: "杰出", seconds: 1081 },
+        { time: "21:54", title: "野花香(feat.Fanaili)", seconds: 1314 },
+        { time: "25:06", title: "范张沈鹏", seconds: 1506 },
+        { time: "30:03", title: "罗马的难眠夜", seconds: 1803 },
+        { time: "33:06", title: "梦里的你(feat.Fanaili)", seconds: 1986 },
+        { time: "36:52", title: "喜爱丰丽", seconds: 2212 },
+        { time: "38:26", title: "Selector(feat.Fanaili)", seconds: 2306 },
+        { time: "41:55", title: "咖啡", seconds: 2515 }
+    ];
+
+    // DOM元素
+    const video = document.getElementById('album-video');
+    const videoOverlay = document.getElementById('video-overlay');
+    const videoPlayPause = document.getElementById('videoPlayPause');
+    const videoProgressBar = document.getElementById('videoProgressBar');
+    const volumeControl = document.getElementById('volumeControl');
+    const videoTimeDisplay = document.getElementById('videoTimeDisplay');
+    const sidebar = document.getElementById('sidebar');
+    const sidebarOverlay = document.getElementById('sidebarOverlay');
+    const openSidebarBtn = document.getElementById('openSidebarBtn');
+    const mobileSidebarBtn = document.getElementById('mobileSidebarBtn');
+    const closeSidebar = document.getElementById('closeSidebar');
+    const sidebarTracksContainer = document.getElementById('sidebarTracksContainer');
+    const showAlbumCoverBtn = document.getElementById('showAlbumCoverBtn');
+    const albumCoverModal = document.getElementById('albumCoverModal');
+    const closeAlbumCover = document.getElementById('closeAlbumCover');
+
+    // 生成侧边栏曲目列表
+    function renderSidebarTracks() {
+        sidebarTracksContainer.innerHTML = '';
+        tracks.forEach((track, index) => {
+            const trackElement = document.createElement('div');
+            trackElement.className = 'flex justify-between items-center py-3 px-4 track-hover';
+            trackElement.innerHTML = `
+                <div class="flex items-center">
+                    <span class="text-secondary w-8 mr-4">${index + 1}</span>
+                    <span>${track.title}</span>
+                </div>
+                <span class="text-secondary">${track.time}</span>
+            `;
+
+            // 点击曲目跳转到对应时间
+            trackElement.addEventListener('click', () => {
+                video.currentTime = track.seconds;
+                video.play();
+                videoOverlay.style.display = 'none';
+                updatePlayPauseIcon();
+
+                // 关闭侧边栏
+                closeSidebarMenu();
+
+                // 滚动到视频区域
+                document.getElementById('listen').scrollIntoView({ behavior: 'smooth' });
+            });
+
+            sidebarTracksContainer.appendChild(trackElement);
+        });
+    }
+
+    // 更新播放/暂停按钮图标
+    function updatePlayPauseIcon() {
+        if (video.paused) {
+            videoPlayPause.innerHTML = '<i class="fa fa-play text-xl"></i>';
+            videoOverlay.style.display = 'flex';
+        } else {
+            videoPlayPause.innerHTML = '<i class="fa fa-pause text-xl"></i>';
+            videoOverlay.style.display = 'none';
+        }
+    }
+
+    // 更新视频进度
+    function updateVideoProgress() {
+        if (video.duration) {
+            const percent = (video.currentTime / video.duration) * 100;
+            videoProgressBar.value = percent;
+
+            // 格式化当前时间和总时长
+            const currentMinutes = Math.floor(video.currentTime / 60);
+            const currentSeconds = Math.floor(video.currentTime % 60);
+            const totalMinutes = Math.floor(video.duration / 60);
+            const totalSeconds = Math.floor(video.duration % 60);
+
+            videoTimeDisplay.textContent = `${currentMinutes.toString().padStart(2, '0')}:${currentSeconds.toString().padStart(2, '0')} / ${totalMinutes.toString().padStart(2, '0')}:${totalSeconds.toString().padStart(2, '0')}`;
+        }
+    }
+
+    // 打开侧边栏菜单
+    function openSidebarMenu() {
+        sidebar.classList.add('open');
+        sidebarOverlay.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+
+    // 关闭侧边栏菜单
+    function closeSidebarMenu() {
+        sidebar.classList.remove('open');
+        sidebarOverlay.classList.remove('active');
+        document.body.style.overflow = '';
+    }
+
+    // 初始化事件监听
+    function initEvents() {
+        // 视频事件监听
+        video.addEventListener('timeupdate', updateVideoProgress);
+        video.addEventListener('loadedmetadata', updateVideoProgress);
+        video.addEventListener('pause', updatePlayPauseIcon);
+        video.addEventListener('play', updatePlayPauseIcon);
+
+        // 播放/暂停控制
+        videoOverlay.addEventListener('click', () => {
+            if (video.paused) {
+                video.play();
+            } else {
+                video.pause();
+            }
+        });
+
+        videoPlayPause.addEventListener('click', () => {
+            if (video.paused) {
+                video.play();
+            } else {
+                video.pause();
+            }
+        });
+
+        // 进度条拖拽控制
+        videoProgressBar.addEventListener('input', () => {
+            const seekTime = (videoProgressBar.value / 100) * video.duration;
+            video.currentTime = seekTime;
+        });
+
+        // 音量控制
+        volumeControl.addEventListener('input', () => {
+            video.volume = volumeControl.value;
+        });
+
+        // 侧边栏控制
+        openSidebarBtn.addEventListener('click', openSidebarMenu);
+        mobileSidebarBtn.addEventListener('click', openSidebarMenu);
+        closeSidebar.addEventListener('click', closeSidebarMenu);
+        sidebarOverlay.addEventListener('click', closeSidebarMenu);
+
+        // 专辑封面弹窗控制
+        showAlbumCoverBtn.addEventListener('click', () => {
+            albumCoverModal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        });
+
+        closeAlbumCover.addEventListener('click', () => {
+            albumCoverModal.classList.add('hidden');
+            document.body.style.overflow = '';
+        });
+
+        // 点击弹窗背景关闭
+        albumCoverModal.addEventListener('click', (e) => {
+            if (e.target === albumCoverModal) {
+                albumCoverModal.classList.add('hidden');
+                document.body.style.overflow = '';
+            }
+        });
+    }
+
+    // 页面加载完成后初始化
+    document.addEventListener('DOMContentLoaded', () => {
+        renderSidebarTracks();
+        initEvents();
+    });
+</script>
+</body>
+</html>
